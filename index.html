@@ -1,0 +1,213 @@
+<index>
+<head>
+	<script src="Keyboard.js"></script>
+	<style>
+
+		body {
+			margin: 0px;
+			padding: 0px;
+		}
+
+		@font-face {
+			font-family: BitDarling;
+			src: url('BitDarling.ttf');
+		}
+
+	</style>
+</head>
+<body>
+	<canvas id="myCanvas"></canvas>
+	<script>
+
+		// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+		// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+		 
+		// requestAnimationFrame polyfill by Erik Möller. fixes from Paul Irish and Tino Zijdel
+		 
+		// MIT license
+		 
+		(function() {
+		    var lastTime = 0;
+		    var vendors = ['ms', 'moz', 'webkit', 'o'];
+		    for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+		        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+		        window.cancelAnimationFrame = window[vendors[x]+'CancelAnimationFrame'] 
+		                                   || window[vendors[x]+'CancelRequestAnimationFrame'];
+		    }
+		 
+		    if (!window.requestAnimationFrame)
+		        window.requestAnimationFrame = function(callback, element) {
+		            var currTime = new Date().getTime();
+		            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+		            var id = window.setTimeout(function() { callback(currTime + timeToCall); }, 
+		              timeToCall);
+		            lastTime = currTime + timeToCall;
+		            return id;
+		        };
+		 
+		    if (!window.cancelAnimationFrame)
+		        window.cancelAnimationFrame = function(id) {
+		            clearTimeout(id);
+		        };
+		}());
+
+		(function () {
+		var keyboard = new KeyboardJS (true);
+
+		var canvas = document.getElementById("myCanvas");
+		var ctx = canvas.getContext("2d");
+
+		var dummyf = function () {};
+
+		var views = [];
+		var currentView = 0;
+
+		function View () {
+			
+		}
+
+		var intro = new View ();
+		intro.interval = 50;
+		intro.index = 0;
+		intro.message = [
+			"rule #34 - If it exists there IS porn of it",
+			"you work at google. you happily work there",
+			"every single day of your life",
+			"in fact, you are part of the search algorithm",
+			"wut            oh yeah",
+			"you filter the porn out of the results",
+			"tutorial easy",
+			"fasten your seatbealts:",
+			"press 'P' when you see porno",
+			"dont press anything otherwise",
+			"porno is representated with the color pink",
+			"gl hf                 wololololo"];
+		intro.mI = 0;
+		intro.logic = function (newDate) {
+			if (this.lastUpdate == undefined) this.lastUpdate = newDate;
+			else if (newDate - this.lastUpdate > this.interval) {
+				this.index++;
+				this.lastUpdate = newDate;
+				if (this.index > this.message[this.mI].length+15) {
+					++this.mI;
+					this.index = 0;
+					if (this.mI >= this.message.length) return true;
+				}
+			}
+		}
+		intro.render = function () {
+			ctx.fillStyle = "black";
+			ctx.font = "20px BitDarling";
+			var m = this.message[this.mI].substring(0, this.index);
+			ctx.fillText(m,50,50);
+		}
+		views.push(intro);
+
+
+		var gameView = new View ();
+		gameView.score = 0;
+		gameView.colors = ["#6699FF", "#66FF99", "#FF6600", "#CCFF33", "#0033CC"];
+		gameView.currentColor = "#FFFFFF";
+		gameView.pink = "#FF99FF";
+		gameView.prob = 0.25;
+		gameView.interval = 500;
+		gameView.gameOver = false;
+		gameView.oldP = false;
+		gameView.oldR = false;
+		gameView.logic = function (newDate) {
+			if (!this.gameOver) this.newDate = newDate;
+			if (gameView.lastUpdate == undefined) gameView.lastUpdate = newDate;
+			else {
+				if (keyboard.keysCHAR['P'] && !this.oldP) {
+					console.log("YEAH");
+					if (this.currentColor == this.pink) this.newImage(newDate);
+					else this.lost();
+				}
+				if (this.gameOver && keyboard.keysCHAR['R'] && !this.oldR) return this.reset();
+				this.oldP = keyboard.keysCHAR['P'];
+				this.oldR = keyboard.keysCHAR['R'];
+				if (newDate - this.lastUpdate > this.interval) {
+					if (this.currentColor == this.pink) this.lost();
+					this.newImage(newDate);
+				}
+			}
+		}
+		gameView.reset = function () {
+			this.score = 0;
+			this.currentColor = "#FFFFFF";
+			this.interval = 500;
+			this.gameOver = false;
+		}
+		gameView.newImage = function (newDate) {
+			var oldColor = this.currentColor;
+			if (this.gameOver) return;
+			while (this.currentColor == oldColor) {
+				if (Math.random() < this.prob) this.currentColor = this.pink;
+				else this.currentColor = this.colors[Math.floor(Math.random()*this.colors.length)];
+			}
+			this.score++;
+			this.lastUpdate = newDate;
+			this.interval--;
+			if (this.interval < 250) this.interval = 250; 
+		}
+		gameView.lost = function () {
+			this.gameOver = true;
+		}
+		gameView.render = function () {
+			ctx.fillStyle = this.currentColor;
+			ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+			ctx.fillStyle = "black";
+			ctx.fillText("score: "+(this.score*10),50,window.innerHeight-60);
+			if (this.gameOver) {
+				ctx.fillText("game over. 'r' to restart",50,50);
+			}
+			ctx.fillRect(0,window.innerHeight-10,window.innerWidth*(this.newDate-this.lastUpdate)/this.interval,10);
+		}
+		views.push(gameView);
+
+		
+		function mainLogic () {
+			var view = views[currentView];
+			if (view != undefined) {
+				if (view.logic(oldDate)) ++currentView;
+			}
+		}
+
+		function mainRender () {
+			ctx.fillStyle = "white";
+			ctx.fillRect(0,0,window.innerWidth,window.innerHeight);
+			var view = views[currentView];
+			if (view != undefined) view.render();
+		}
+
+
+		var oldDate = undefined;
+		var delta = undefined;
+
+		function mainLoop () {
+
+			requestAnimationFrame(mainLoop);
+
+			var newDate = +new Date ();
+			if (oldDate == undefined) oldDate == newDate;
+			delta = newDate - oldDate;
+			oldDate = newDate;
+
+			mainLogic();
+
+			mainRender();
+
+		}
+
+		window.onresize = function () {
+			canvas.width = window.innerWidth;
+			canvas.height = window.innerHeight;
+			mainRender();
+		}
+		window.onresize();
+
+		mainLoop();
+		}());
+
+	</script>
+</body>
