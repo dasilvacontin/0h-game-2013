@@ -1,4 +1,4 @@
-0h-game-2013
+rule#34
 ============
 
 Game created in 0 hours for the [0h game jam](http://0hgame.eu/). My random topic was "rule #34". I was *very* tempted to re-roll.
